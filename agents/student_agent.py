@@ -54,7 +54,6 @@ class StudentAgent(Agent):
 
         # Get all possible moves that we could make
         better_moves, losing_moves = self.get_possible_moves(chess_board, my_pos, adv_pos, max_step)
-        #print(better_moves)
 
         # If we already lost, just play a random losing move
         if (len(better_moves) == 0):
@@ -63,7 +62,9 @@ class StudentAgent(Agent):
         
         # If not, get the list of best possible moves based on our heuristic
         list_of_moves = self.get_best_moves(chess_board, adv_pos, max_step, better_moves)
+        copy_chess_board = deepcopy(chess_board)
         print(f'NUMBER OF MOVES I CAN MAKE: {len(list_of_moves)}')
+        print('###############################################')
         pos, dir = random.choice(list_of_moves)
 
         # Based on each of those moves, simulate games and see what moves gives the best future outcome 
