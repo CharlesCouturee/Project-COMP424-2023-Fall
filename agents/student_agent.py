@@ -31,6 +31,12 @@ class StudentAgent(Agent):
         # Opposite Directions
         self.opposites = {0: 2, 1: 3, 2: 0, 3: 1}
 
+        # For simulation purposes
+        self.chess_board = None
+        self.board_size = 0
+        self.p0_pos = (0,0)
+        self.p1_pos = (0,0)
+
     def step(self, chess_board, my_pos, adv_pos, max_step):
         """
         Implement the step function of your agent here.
@@ -62,20 +68,177 @@ class StudentAgent(Agent):
         
         # If not, get the list of best possible moves based on our heuristic
         list_of_moves = self.get_best_moves(chess_board, adv_pos, max_step, better_moves)
-        copy_chess_board = deepcopy(chess_board)
-        print(f'NUMBER OF MOVES I CAN MAKE: {len(list_of_moves)}')
-        print('###############################################')
-        pos, dir = random.choice(list_of_moves)
+
+        # If we just have 1 move or too many moves, take one at random
+        if len(list_of_moves) == 1 or len(list_of_moves) > 4:
+            # Extract move
+            move = random.choice(list_of_moves)
+
+            # Initialize variables for simulation
+            self.chess_board = deepcopy(chess_board)
+            self.board_size = len(chess_board[0])
+            self.p0_pos = my_pos
+            self.p1_pos = adv_pos
+
+            # Perform quick simulation test to see if this move actually makes us lose
+            end, p0_score, p1_score = self.simulate_game(move, max_step, 4)
+
+            # If this is a losing move, choose another one at random from the list of better possible moves
+            if end and p1_score > p0_score:
+                # Remove it from list of possible moves
+                better_moves.remove(move)
+
+                # Try your luck with another random move
+                move = random.choice(better_moves)
+                pos, dir = move
+                return pos, dir
+
+            # Return next move
+            pos, dir = move
+            return pos, dir
+
+        # Variables to get the best next move possible
+        best_move = None
+        best_wins = -1
 
         # Based on each of those moves, simulate games and see what moves gives the best future outcome 
+        for move in list_of_moves:
+            wins = 0
+            # Do simulations
+            for _ in range(100):
+                # Initialize variables for simulation
+                self.chess_board = deepcopy(chess_board)
+                self.board_size = len(chess_board[0])
+                self.p0_pos = my_pos
+                self.p1_pos = adv_pos
 
+                # Perform simulation
+                end, p0_score, p1_score = self.simulate_game(move, max_step, 4)
 
+                # Check if we haven't found a game-winning move first:
+                if end and p0_score > p1_score:
+                    pos, dir = move
+                    return pos, dir
+
+                # Check if we have better chance of winning
+                if p0_score > p1_score:
+                    wins += 1
+
+            # Check if we have not found a better move
+            if wins > best_wins:
+                best_wins = wins
+                best_move = move
+                
+        pos, dir = best_move
 
         time_taken = time.time() - start_time
         
         print("My AI's turn took ", time_taken, "seconds.")
 
         return pos, dir
+    
+    def simulate_game(self, move, max_step, turns):
+        # Extract move
+        pos, dir = move
+        r, c = pos
+
+        # Set initial barrier and update p0_pos
+        self.set_barrier(r, c, dir)
+        self.p0_pos = pos
+
+        # Check if game was ended
+        end, p0_score, p1_score = self.check_endgame()
+        if end:
+            return end, p0_score, p1_score
+        
+        # It's our adversary turn to play
+        turn = 1
+        
+        # If not, simulate the game for 10 more steps and if the game is not finished, base our score using heuristics
+        for _ in range(turns):
+            # Simulate a step
+            self.simulate_step(max_step, turn)
+
+            # Check if the game was ended
+            end, p0_score, p1_score = self.check_endgame()
+
+            # if the game is over, return the results
+            if end:
+                return end, p0_score, p1_score
+            
+            # Update turn
+            turn = 1 - turn
+            
+        # If the game did not finished after 10 turns, base our results on heuristics
+        better_moves_p0, _ = self.get_possible_moves(self.chess_board, self.p0_pos, self.p1_pos, max_step)
+        better_moves_p1, _ = self.get_possible_moves(self.chess_board, self.p1_pos, self.p0_pos, max_step)
+
+        p0_score = len(better_moves_p0)
+        p1_score = len(better_moves_p1)
+
+        return False, p0_score, p1_score
+    
+    def simulate_step(self, max_step, my_turn):
+        # Variables for storing the possible moves
+        better_moves = None
+        losing_moves = None
+
+        # If it is our turn to play
+        if my_turn == 0:
+            # Extract possible moves
+            better_moves, losing_moves = self.get_possible_moves(self.chess_board, self.p0_pos, self.p1_pos, max_step)
+
+            if better_moves:
+                # Get a random possible move and update the chess board
+                next_move = random.choice(better_moves)
+                
+                # Extract move
+                pos, dir = next_move
+                r, c = pos
+
+                # Set initial barrier and update p0_pos
+                self.set_barrier(r, c, dir)
+                self.p0_pos = pos
+
+            else:
+                # Get a random losing move and update the chess board
+                next_move = random.choice(losing_moves)
+                
+                # Extract move
+                pos, dir = next_move
+                r, c = pos
+
+                # Set initial barrier and update p0_pos
+                self.set_barrier(r, c, dir)
+                self.p0_pos = pos
+
+        else:
+            # Extract possible moves
+            better_moves, losing_moves = self.get_possible_moves(self.chess_board, self.p1_pos, self.p0_pos, max_step)
+
+            if better_moves:
+                # Get a random possible move and update the chess board
+                next_move = random.choice(better_moves)
+                
+                # Extract move
+                pos, dir = next_move
+                r, c = pos
+
+                # Set initial barrier and update p0_pos
+                self.set_barrier(r, c, dir)
+                self.p1_pos = pos
+
+            else:
+                # Get a random losing move and update the chess board
+                next_move = random.choice(losing_moves)
+                
+                # Extract move
+                pos, dir = next_move
+                r, c = pos
+
+                # Set initial barrier and update p0_pos
+                self.set_barrier(r, c, dir)
+                self.p1_pos = pos
     
     def get_best_moves(self, chess_board, adv_pos, max_step, better_moves):
         list_of_offensive_moves = []
@@ -87,7 +250,7 @@ class StudentAgent(Agent):
             my_pos, dir = move
 
             # Get all possible moves that my adversary can make if I were to perform "move" as my play this turn
-            adv_better_moves, bad = self.get_adv_moves_given_wall_offense(chess_board, my_pos, adv_pos, max_step, dir)
+            adv_better_moves, _ = self.get_adv_moves_given_wall_offense(chess_board, my_pos, adv_pos, max_step, dir)
             adv_good_moves, _ = self.get_possible_moves(chess_board, adv_pos, my_pos, max_step)
 
             # If we can corner our adversary exit the loop
@@ -124,7 +287,7 @@ class StudentAgent(Agent):
             my_pos, dir = move
 
             # Get all possible moves that I can make to have more options in the future
-            my_better_moves, my_losing_moves = self.get_my_moves_given_wall_defensive(chess_board, my_pos, adv_pos, max_step, dir)
+            my_better_moves, _ = self.get_my_moves_given_wall_defensive(chess_board, my_pos, adv_pos, max_step, dir)
 
             # If we found a new better move, clear the list and update free space varaible
             if len(my_better_moves) > free_space:
@@ -314,3 +477,63 @@ class StudentAgent(Agent):
                 state_queue.append((new_pos, curr_step + 1))
 
         return better_moves, losing_moves
+    
+    def check_endgame(self):
+        """
+        Check if the game ends and compute the current score of the agents.
+
+        Returns
+        -------
+        is_endgame : bool
+            Whether the game ends.
+        player_1_score : int
+            The score of player 1.
+        player_2_score : int
+            The score of player 2.
+        """
+        # Union-Find
+        father = dict()
+        for r in range(self.board_size):
+            for c in range(self.board_size):
+                father[(r, c)] = (r, c)
+
+        def find(pos):
+            if father[pos] != pos:
+                father[pos] = find(father[pos])
+            return father[pos]
+
+        def union(pos1, pos2):
+            father[pos1] = pos2
+
+        for r in range(self.board_size):
+            for c in range(self.board_size):
+                for dir, move in enumerate(
+                    self.moves[1:3]
+                ):  # Only check down and right
+                    if self.chess_board[r, c, dir + 1]:
+                        continue
+                    pos_a = find((r, c))
+                    pos_b = find((r + move[0], c + move[1]))
+                    if pos_a != pos_b:
+                        union(pos_a, pos_b)
+
+        for r in range(self.board_size):
+            for c in range(self.board_size):
+                find((r, c))
+
+        p0_r = find(tuple(self.p0_pos))
+        p1_r = find(tuple(self.p1_pos))
+        p0_score = list(father.values()).count(p0_r)
+        p1_score = list(father.values()).count(p1_r)
+
+        if p0_r == p1_r:
+            return False, p0_score, p1_score
+
+        return True, p0_score, p1_score
+    
+    def set_barrier(self, r, c, dir):
+        # Set the barrier to True
+        self.chess_board[r, c, dir] = True
+        # Set the opposite barrier to True
+        move = self.moves[dir]
+        self.chess_board[r + move[0], c + move[1], self.opposites[dir]] = True
