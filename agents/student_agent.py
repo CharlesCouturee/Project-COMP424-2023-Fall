@@ -71,6 +71,9 @@ class StudentAgent(Agent):
 
         # If we just have 1 move or too many moves, take one at random
         if len(list_of_moves) == 1 or len(list_of_moves) >= 4:
+            # Store the least bad moves we got
+            last_resort_moves = []
+
             # First check quickly if we could end the game with this next move
             for move in list_of_moves:
                 # Initialize variables for simulation
@@ -79,36 +82,30 @@ class StudentAgent(Agent):
                 self.p0_pos = my_pos
                 self.p1_pos = adv_pos
     
-                # Perform quick simulation test to see if this move actually makes us lose
+                # Perform quick simulation test to see if this move actually makes us lose or win
                 end, p0_score, p1_score = self.simulate_game(move, max_step, 0)
 
                 # We win?
                 if end and p0_score > p1_score:
                     pos, dir = move
                     return pos, dir
+                
+                # We lose?
+                if end and p0_score <= p1_score:
+                    better_moves.remove(move)
+                    continue
+                
+                # Save that move if we can't win the game with our next move
+                last_resort_moves.append(move)
 
-            # Extract a random move from the list of good moves
-            move = random.choice(list_of_moves)
-
-            # Initialize variables for simulation
-            self.chess_board = deepcopy(chess_board)
-            self.board_size = len(chess_board[0])
-            self.p0_pos = my_pos
-            self.p1_pos = adv_pos
-
-            # Perform quick simulation test to see if this move actually makes us lose
-            end, p0_score, p1_score = self.simulate_game(move, max_step, 4)
-
-            # If this is a losing move, choose another one at random from the list of better possible moves
-            if end and p1_score > p0_score:
-                # Remove it from list of possible moves
-                better_moves.remove(move)
-
-                # Try your luck with another random move
-                move = random.choice(better_moves)
+            if last_resort_moves:
+                move = random.choice(last_resort_moves)
                 pos, dir = move
                 return pos, dir
 
+            # Extract a random move from the list of better moves
+            move = random.choice(better_moves)
+            
             # Return next move
             pos, dir = move
             return pos, dir
