@@ -81,7 +81,7 @@ class StudentAgent(Agent):
             self.p1_pos = adv_pos
 
             # Perform quick simulation test to see if this move actually makes us lose
-            end, p0_score, p1_score = self.simulate_game(move, max_step, 4)
+            end, p0_score, p1_score = self.simulate_game(move, max_step, 3)
 
             # If this is a losing move, choose another one at random from the list of better possible moves
             if end and p1_score > p0_score:
@@ -113,7 +113,7 @@ class StudentAgent(Agent):
                 self.p1_pos = adv_pos
 
                 # Perform simulation
-                end, p0_score, p1_score = self.simulate_game(move, max_step, 4)
+                end, p0_score, p1_score = self.simulate_game(move, max_step, 3)
 
                 # Check if we haven't found a game-winning move first:
                 if end and p0_score > p1_score:
@@ -154,7 +154,7 @@ class StudentAgent(Agent):
         # It's our adversary turn to play
         turn = 1
         
-        # If not, simulate the game for 10 more steps and if the game is not finished, base our score using heuristics
+        # If not, simulate the game for x more steps and if the game is not finished, base our score using heuristics
         for _ in range(turns):
             # Simulate a step
             self.simulate_step(max_step, turn)
