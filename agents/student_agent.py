@@ -70,8 +70,24 @@ class StudentAgent(Agent):
         list_of_moves = self.get_best_moves(chess_board, adv_pos, max_step, better_moves)
 
         # If we just have 1 move or too many moves, take one at random
-        if len(list_of_moves) == 1 or len(list_of_moves) > 4:
-            # Extract move
+        if len(list_of_moves) == 1 or len(list_of_moves) >= 4:
+            # First check quickly if we could end the game with this next move
+            for move in list_of_moves:
+                # Initialize variables for simulation
+                self.chess_board = deepcopy(chess_board)
+                self.board_size = len(chess_board[0])
+                self.p0_pos = my_pos
+                self.p1_pos = adv_pos
+    
+                # Perform quick simulation test to see if this move actually makes us lose
+                end, p0_score, p1_score = self.simulate_game(move, max_step, 0)
+
+                # We win?
+                if end and p0_score > p1_score:
+                    pos, dir = move
+                    return pos, dir
+
+            # Extract a random move from the list of good moves
             move = random.choice(list_of_moves)
 
             # Initialize variables for simulation
@@ -81,7 +97,7 @@ class StudentAgent(Agent):
             self.p1_pos = adv_pos
 
             # Perform quick simulation test to see if this move actually makes us lose
-            end, p0_score, p1_score = self.simulate_game(move, max_step, 3)
+            end, p0_score, p1_score = self.simulate_game(move, max_step, 4)
 
             # If this is a losing move, choose another one at random from the list of better possible moves
             if end and p1_score > p0_score:
@@ -105,7 +121,7 @@ class StudentAgent(Agent):
         for move in list_of_moves:
             wins = 0
             # Do simulations
-            for _ in range(100):
+            for _ in range(90):
                 # Initialize variables for simulation
                 self.chess_board = deepcopy(chess_board)
                 self.board_size = len(chess_board[0])
@@ -113,7 +129,7 @@ class StudentAgent(Agent):
                 self.p1_pos = adv_pos
 
                 # Perform simulation
-                end, p0_score, p1_score = self.simulate_game(move, max_step, 3)
+                end, p0_score, p1_score = self.simulate_game(move, max_step, 4)
 
                 # Check if we haven't found a game-winning move first:
                 if end and p0_score > p1_score:
@@ -121,7 +137,7 @@ class StudentAgent(Agent):
                     return pos, dir
 
                 # Check if we have better chance of winning
-                if p0_score > p1_score:
+                if p0_score >= p1_score:
                     wins += 1
 
             # Check if we have not found a better move
